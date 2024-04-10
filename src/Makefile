@@ -6,12 +6,14 @@ include loops.mk
 COMMON_FILES=dummy.o common.o
 
 BIN_DIR=../bin/$(COMPILER)
+ASM_DIR_VEC=../asm/$(COMPILER)/vec$(SUFFIX)
+ASM_DIR_NOVEC=../asm/$(COMPILER)/novec$(SUFFIX)
 
 libs=-lm
 
-all : $(BIN_DIR)/tsvc_vec $(BIN_DIR)/tsvc_novec
+all : $(BIN_DIR)/tsvc$(BUILD)_vec $(BIN_DIR)/tsvc$(BUILD)_novec
 
-$(BIN_DIR)/tsvc_% : tsvc_%.o $(foreach t,$(TESTS), loops/$(t)_%.o) $(COMMON_FILES)
+$(BIN_DIR)/tsvc$(BUILD)_% : tsvc_%.o $(foreach t,$(TESTS), loops/$(t)_%.o) $(COMMON_FILES)
 	@mkdir -p $(BIN_DIR)
 	$(CC) $^ $(libs) -o $@$(SUFFIX)
 
@@ -25,6 +27,17 @@ $(BIN_DIR)/tsvc_% : tsvc_%.o $(foreach t,$(TESTS), loops/$(t)_%.o) $(COMMON_FILE
 # Be wary that PGI doesn't respect IEEE properly with vectorisation
 %.o:%.c .FORCE
 	$(CC) $(flags) $(vecflags) $(ieee_math_flags) -c -o $@ $<
+
+.PHONY: .FORCE asm
+asm : $(foreach t,$(TESTS), $(ASM_DIR_VEC)/$(t).s) $(foreach t,$(TESTS), $(ASM_DIR_NOVEC)/$(t).s)
+
+$(ASM_DIR_VEC)/%.s: loops/%.c .FORCE
+	@mkdir -p $(ASM_DIR_VEC)
+	$(CC) -I . $(flags) $(vecflags) -S -o $@ $<
+
+$(ASM_DIR_NOVEC)/%.s: loops/%.c .FORCE
+	@mkdir -p $(ASM_DIR_NOVEC)
+	$(CC) -I . $(flags) $(novecflags) -S -o $@ $<
 
 .PHONY: .FORCE clean
 .FORCE:
